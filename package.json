@@ -1,0 +1,13 @@
+{
+  "name": "eth-storage",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "author": "Chung Wu",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "ipfs-http-client": "^33.1.1",
+    "web3": "^1.0.0-beta.35",
+    "yaml": "^1.6.0"
+  }
+}

@@ -1,0 +1,8 @@
+---
+- filename: example1.jpg
+  description: "Hello World"
+  location: [22.284689, 114.158142]
+
+- filename: example2.jpg
+  description: "Second file"
+  location: [22.304344, 114.161468]
