@@ -26,11 +26,11 @@ function sendTransaction(rawTransaction) {
     );
 }
 
-async function ethUpload(data) {
+async function ethUpload(data, signer) {
     if (typeof data !== "string") {
         data = JSON.stringify(data);
     }
-    const { address: from, signTransaction } = web3.eth.accounts.privateKeyToAccount(ETH_PRIVKEY);
+    const { address: from, signTransaction } = signer;
     const call = Storage.methods.store(data);
     const callData = call.encodeABI();
     const gas = await call.estimateGas({ from });
@@ -42,29 +42,38 @@ async function ethUpload(data) {
     return sendTransaction(signedTx.rawTransaction);
 }
 
-async function metadataToIpfsAndIpld(input) {
-    const path = `./input/${input.filename}`;
-    console.log(`Reading ${path}`);
-    const content = await readFile(path)
-    console.log(`Adding ${path} onto IPFS`);
+async function uploadIpfs(fileContent) {
     const ipfsResult = await ipfs.add(content);
-    const ipfsHash = ipfsResult[0].hash;
-    input.ipfs = ipfsHash;
-    console.log(`${path} added onto IPFS, hash: ${ipfsHash}`);
-    console.log(`Putting metadata for ${path} onto IPLD`);
-    const ipld = await ipfs.dag.put(input, {
+    return ipfsResult[0].hash;
+}
+
+async function uploadIpld(metadata) {
+    const ipld = await ipfs.dag.put(metadata, {
         format: "dag-cbor",
         hashAlg: "sha2-256",
     });
-    const ipldHash = ipld.toBaseEncodedString();
-    console.log(`Metadata for ${path} put onto IPLD, hash: ${ipldHash}`);
-    return ipldHash;
+    return ipld.toBaseEncodedString();
+}
+
+async function metadataToIpfsAndIpld(input) {
 }
 
 async function main() {
+    const signer = web3.eth.accounts.privateKeyToAccount(ETH_PRIVKEY);
     const inputRawData = fs.readFileSync("./input/input.yaml", "utf-8");
     const metadataArray = yaml.parse(inputRawData);
-    const ipldHashes = await Promise.all(metadataArray.map(metadataToIpfsAndIpld));
+    const ipldHashes = await Promise.all(metadataArray.map(metadata => {
+        const path = `./input/${metadata.filename}`;
+        console.log(`Reading ${path}`);
+        const content = await readFile(path)
+        console.log(`Adding ${path} onto IPFS`);
+        metadata.ipfs = await uploadIpfs(content);
+        console.log(`${path} added onto IPFS, hash: ${metadata.ipfs}`);
+        console.log(`Putting metadata for ${path} onto IPLD`);
+        const ipldHash = await uploadIpld(metadata)
+        console.log(`Metadata for ${path} put onto IPLD, hash: ${ipldHash}`);
+        return ipldHash;
+    }));
     const txHash = await ethUpload(ipldHashes);
     console.log(txHash);
 }
